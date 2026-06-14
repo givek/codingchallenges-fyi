@@ -7,7 +7,7 @@ import (
 )
 
 func SizeInBytes(r io.Reader) (int64, error) {
-	buf := make([]byte, 128)
+	buf := make([]byte, 16*1024)
 	var sizeInBytes int64 = 0
 
 	for {
