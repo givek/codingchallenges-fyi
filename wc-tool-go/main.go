@@ -144,35 +144,51 @@ func NumberOfChars(r io.Reader) (int64, error) {
 }
 
 func main() {
-	f, err := os.Open("./test.txt")
+	userArgs := os.Args[1:]
+
+	if len(userArgs) < 2 {
+		// TODO: FIXME
+		panic("less than 2 args")
+	}
+
+	mode := userArgs[0]
+	file := userArgs[1]
+
+	f, err := os.Open(file)
 	if err != nil {
 		panic(err) // TODO: Handle the error gracefully
 	}
 	defer f.Close()
 
-	// _, err = SizeInBytes(f)
-	// if err != nil {
-	// 	panic(err) // TODO: Handle the error gracefully
-	// }
+	switch mode {
+	case "-c":
+		sizeInBytes, err := SizeInBytes(f)
+		if err != nil {
+			panic(err) // TODO: Handle the error gracefully
+		}
+		// fStat, err := f.Stat()
+		// if err != nil {
+		// 	panic(err)
+		// }
+		fmt.Printf("%v %v\n", sizeInBytes, f.Name())
+	case "-l":
+		totalLineCount, err := NumberOfLines(f)
+		if err != nil {
+			panic(err) // TODO: Handle the error gracefully
+		}
+		fmt.Printf("%v %v\n", totalLineCount, f.Name())
+	case "-w":
+		totalWordCount, err := NumberOfWords(f)
+		if err != nil {
+			panic(err) // TODO: Handle the error gracefully
+		}
+		fmt.Printf("%v %v\n", totalWordCount, f.Name())
+	case "-m":
+		totalCharCount, err := NumberOfChars(f)
+		if err != nil {
+			panic(err) // TODO: Handle the error gracefully
+		}
 
-	// totalLineCount, err := NumberOfLines(f)
-	// if err != nil {
-	// 	panic(err) // TODO: Handle the error gracefully
-	// }
-
-	// totalWordCount, err := NumberOfWords(f)
-	// if err != nil {
-	// 	panic(err) // TODO: Handle the error gracefully
-	// }
-
-	totalCharCount, err := NumberOfChars(f)
-	if err != nil {
-		panic(err) // TODO: Handle the error gracefully
+		fmt.Printf("%v %v\n", totalCharCount, f.Name())
 	}
-	// fStat, err := f.Stat()
-	// if err != nil {
-	// 	panic(err)
-	// }
-
-	fmt.Printf("%v %v\n", totalCharCount, f.Name())
 }
