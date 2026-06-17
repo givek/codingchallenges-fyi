@@ -2,6 +2,7 @@ package counter_test
 
 import (
 	"bytes"
+	"fmt"
 	"testing"
 
 	"github.com/givek/codingchallenges-fyi/wc-tool-go/counter"
@@ -16,9 +17,29 @@ func TestSizeInBytes(t *testing.T) {
 		expected int64
 	}{
 		{
-			name:     "hello", // TODO
-			input:    []byte("Hello"),
-			expected: 5,
+			name:     "empty string",
+			input:    []byte(""),
+			expected: 0,
+		},
+		{
+			name:     "only ASCII characters",
+			input:    []byte(fmt.Sprintf("Hello, \n Hope you are doing well!")),
+			expected: 33,
+		},
+		{
+			name:     "multi-byte UTF-8 characters (emojis and kanji)",
+			input:    []byte("Hello 👋 世界"), // "👋" is 4 bytes, "世" and "界" are 3 bytes each
+			expected: 17,
+		},
+		{
+			name:     "large input (10 KB)",
+			input:    bytes.Repeat([]byte("A"), 10240),
+			expected: 10240,
+		},
+		{
+			name:     "control characters and mixed newlines",
+			input:    []byte("\x00\n\r\t"),
+			expected: 4,
 		},
 	}
 
