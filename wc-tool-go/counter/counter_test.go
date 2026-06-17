@@ -47,7 +47,7 @@ func TestSizeInBytes(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			sizeInBytes, err := counter.SizeInBytes(bytes.NewBuffer(test.input))
 
-			require.NoError(t, err, "failed to parse input for test case:")
+			require.NoError(t, err, "failed to parse input for test case: %v", test.name)
 
 			assert.Equal(t, test.expected, sizeInBytes, "expect: %v, got: %v", test.expected, sizeInBytes)
 		})
@@ -91,7 +91,7 @@ func TestNumberOfLines(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			sizeInBytes, err := counter.NumberOfLines(bytes.NewBuffer(test.input))
 
-			require.NoError(t, err, "failed to parse input for test case:")
+			require.NoError(t, err, "failed to parse input for test case: %v", test.name)
 
 			assert.Equal(t, test.expected, sizeInBytes, "expect: %v, got: %v", test.expected, sizeInBytes)
 		})
@@ -135,7 +135,7 @@ func TestNumberOfWords(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			sizeInBytes, err := counter.NumberOfWords(bytes.NewBuffer(test.input))
 
-			require.NoError(t, err, "failed to parse input for test case:")
+			require.NoError(t, err, "failed to parse input for test case: %v", test.name)
 
 			assert.Equal(t, test.expected, sizeInBytes, "expect: %v, got: %v", test.expected, sizeInBytes)
 		})
@@ -179,7 +179,7 @@ func TestNumberOfChars(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			sizeInBytes, err := counter.NumberOfChars(bytes.NewBuffer(test.input))
 
-			require.NoError(t, err, "failed to parse input for test case:")
+			require.NoError(t, err, "failed to parse input for test case: %v", test.name)
 
 			assert.Equal(t, test.expected, sizeInBytes, "expect: %v, got: %v", test.expected, sizeInBytes)
 		})
