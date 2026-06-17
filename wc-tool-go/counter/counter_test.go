@@ -10,13 +10,25 @@ import (
 )
 
 func TestSizeInBytes(t *testing.T) {
-	r := bytes.NewBuffer([]byte("Hello"))
+	tests := []struct {
+		name     string
+		input    []byte
+		expected int64
+	}{
+		{
+			name:     "hello", // TODO
+			input:    []byte("Hello"),
+			expected: 5,
+		},
+	}
 
-	bc, err := counter.SizeInBytes(r)
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			sizeInBytes, err := counter.SizeInBytes(bytes.NewBuffer(test.input))
 
-	require.NoError(t, err, "failed to parse input for test case:")
+			require.NoError(t, err, "failed to parse input for test case:")
 
-	expected := int64(5)
-
-	assert.Equal(t, bc, expected, "expect: %v, got: %v", expected, bc)
+			assert.Equal(t, test.expected, sizeInBytes, "expect: %v, got: %v", test.expected, sizeInBytes)
+		})
+	}
 }
