@@ -7,8 +7,21 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strings"
 	"time"
 )
+
+func logReqDetails(r *http.Request) {
+	log.Println("Received request from ", r.RemoteAddr)
+	log.Println(r.Method, r.URL.Path, r.Proto)
+	log.Println("Host: ", r.Host)
+	log.Println("User-Agent: ", r.UserAgent())
+
+	acceptHeader := r.Header.Get("Accept")
+	if acceptHeader != "" {
+		log.Println("Accept: ", acceptHeader)
+	}
+}
 
 func dummyServer() {
 	port := ":8080"
@@ -16,15 +29,7 @@ func dummyServer() {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		log.Println("Received request from ", r.RemoteAddr)
-		log.Println(r.Method, r.URL.Path, r.Proto)
-		log.Println("Host: ", r.Host)
-		log.Println("User-Agent: ", r.UserAgent())
-
-		acceptHeader := r.Header.Get("Accept")
-		if acceptHeader != "" {
-			log.Println("Accept: ", acceptHeader)
-		}
+		logReqDetails(r)
 
 		w.Write([]byte("Hello From Backend Server\n"))
 
@@ -40,8 +45,16 @@ func main() {
 	userArgs := os.Args[1:]
 
 	if len(userArgs) > 0 {
-		dummyServer()
-		return
+		flag := strings.TrimSpace(userArgs[0])
+
+		const testServerFlag = "-test-server"
+
+		if flag == testServerFlag {
+			dummyServer()
+			return
+		} else {
+			log.Fatal("Unsupported Flag: ", flag)
+		}
 	}
 
 	port := ":80"
@@ -49,15 +62,7 @@ func main() {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		log.Println("Received request from ", r.RemoteAddr)
-		log.Println(r.Method, r.URL.Path, r.Proto)
-		log.Println("Host: ", r.Host, r.URL.Host)
-		log.Println("User-Agent: ", r.UserAgent())
-
-		acceptHeader := r.Header.Get("Accept")
-		if acceptHeader != "" {
-			log.Println("Accept: ", acceptHeader)
-		}
+		logReqDetails(r)
 
 		httpClient := &http.Client{
 			Timeout: time.Second * 5,
