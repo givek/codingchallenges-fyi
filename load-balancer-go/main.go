@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"io"
 	"log"
 	"net/http"
@@ -77,7 +76,12 @@ func main() {
 		// - Is this a hack?
 		// - Would it be better to set a custom header: X-Client-Host?
 
-		clonedReq := r.Clone(context.Background())
+		// Use r.Context() intead of context.Background(), because if
+		// the client disconnects or aborts their HTTP request halfway
+		// through, our proxy server will still keep the connection open
+		// and waste resources processing.
+		clonedReq := r.Clone(r.Context())
+		// clonedReq := r.Clone(context.Background())
 		// clonedReq.URL = newBaseURL
 
 		clonedReq.URL.Scheme = newBaseURL.Scheme
