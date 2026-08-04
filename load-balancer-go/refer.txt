@@ -1,0 +1,3 @@
+- https://github.com/SlyMarbo/bulb
+- https://github.com/Fuad28/load-balancer
+- https://domenicoluciani.com/2024/02/12/creating-an-application-layer-load-balancer.html

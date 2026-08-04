@@ -1,11 +1,14 @@
 package main
 
 import (
+	"fmt"
 	"io"
 	"log"
 	"net/http"
 	"net/url"
 	"os"
+	"slices"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -22,20 +25,18 @@ func logReqDetails(r *http.Request) {
 	}
 }
 
-func dummyServer() {
-	port := ":8080"
-
+func dummyServer(port int) {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		logReqDetails(r)
 
-		w.Write([]byte("Hello From Backend Server\n"))
+		w.Write([]byte(fmt.Sprintf("Hello From Backend Server running on port: %v\n", port)))
 
 		log.Println("Replied with a hello message")
 	})
 
-	if err := http.ListenAndServe(port, mux); err != nil {
+	if err := http.ListenAndServe(fmt.Sprintf(":%v", port), mux); err != nil {
 		log.Fatal(err)
 	}
 }
@@ -43,13 +44,19 @@ func dummyServer() {
 func main() {
 	userArgs := os.Args[1:]
 
-	if len(userArgs) > 0 {
+	if len(userArgs) > 1 {
 		flag := strings.TrimSpace(userArgs[0])
 
-		const testServerFlag = "-test-server"
+		const testServerFlag = "-ts"
 
 		if flag == testServerFlag {
-			dummyServer()
+			port, err := strconv.Atoi(strings.TrimSpace(userArgs[1]))
+			if err != nil {
+				// TODO: There needs to be a helpful messsage
+				// 	along with the err.
+				log.Fatal(err)
+			}
+			dummyServer(port)
 			return
 		} else {
 			log.Fatal("Unsupported Flag: ", flag)
@@ -60,6 +67,14 @@ func main() {
 
 	mux := http.NewServeMux()
 
+	servers := []int{8080, 8081}
+	// TODO: Golang maps are not conc safe??
+	serversMap := map[int]bool{
+		8080: true,
+		8081: true,
+	}
+	currServerIdx := 0
+
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		logReqDetails(r)
 
@@ -67,7 +82,10 @@ func main() {
 			Timeout: time.Second * 5,
 		}
 
-		newBaseURL, err := url.Parse("http://localhost:8080")
+		serverPort := servers[currServerIdx]
+		currServerIdx = (currServerIdx + 1) % len(servers)
+
+		newBaseURL, err := url.Parse(fmt.Sprintf("http://localhost:%v", serverPort))
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -109,6 +127,35 @@ func main() {
 			log.Fatal(err)
 		}
 	})
+
+	go func() {
+		for t := range time.Tick(time.Second * 2) {
+			for k, _ := range serversMap {
+				res, err := http.Get(fmt.Sprintf("http://localhost:%v/health-check", k))
+				if err != nil {
+					// TODO: log.Fatal is bad, we need something better with more context
+					log.Println("Got ERR HEALTH CHECK", err)
+					serversMap[k] = false
+					servers = slices.DeleteFunc(servers, func(p int) bool {
+						return p == k
+					})
+					continue
+				}
+
+				if res.StatusCode != http.StatusOK {
+					serversMap[k] = false
+					servers = slices.DeleteFunc(servers, func(p int) bool {
+						return p == k
+					})
+				} else if serversMap[k] == false {
+					serversMap[k] = true
+					servers = append(servers, k)
+				}
+			}
+
+			log.Println("Req done: ", servers, t)
+		}
+	}()
 
 	if err := http.ListenAndServe(port, mux); err != nil {
 		log.Fatal(err)
