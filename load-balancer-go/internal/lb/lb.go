@@ -32,15 +32,18 @@ func NewLoadBalancer(servers []*Server) *LoadBalancer {
 }
 
 func (lb *LoadBalancer) healthCheckServers(interval time.Duration) {
-	for t := range time.Tick(interval) {
+	client := http.Client{Timeout: 2 * time.Second}
+
+	for _ = range time.Tick(interval) {
 		for _, s := range lb.servers {
-			res, err := http.Get(fmt.Sprintf("http://localhost:%v/health-check", s.port))
+			res, err := client.Get(fmt.Sprintf("http://localhost:%v/health-check", s.port))
 			if err != nil {
-				// TODO: log.Fatal is bad, we need something better with more context
-				log.Println("Got ERR HEALTH CHECK", err)
+				log.Printf("Health check failed for port %d: %v", s.port, err)
 				s.active = false
 				continue
 			}
+
+			res.Body.Close()
 
 			if res.StatusCode != http.StatusOK {
 				s.active = false
@@ -48,7 +51,6 @@ func (lb *LoadBalancer) healthCheckServers(interval time.Duration) {
 				s.active = true
 			}
 		}
-		log.Println("Req done: ", t)
 	}
 }
 
