@@ -14,7 +14,7 @@ func main() {
 		server.NewServer(8082, true),
 	}
 
-	lb := lb.NewLoadBalancer(servers)
+	lb := lb.NewLoadBalancer(servers, 80)
 
 	if err := lb.Start(); err != nil {
 		log.Fatal(err)
