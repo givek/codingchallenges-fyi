@@ -6,28 +6,20 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"sync"
 	"time"
 
+	"github.com/givek/codingchallenges-fyi/load-balancer-go/internal/server"
 	"github.com/givek/codingchallenges-fyi/load-balancer-go/internal/utils"
 )
 
-type Server struct {
-	// TODO: Maybe one of the servers is not on the local network?
-	// 	- Is this even valid concern?
-	port   int
-	active bool
-}
-
-func NewServer(port int, active bool) *Server {
-	return &Server{port, active}
-}
-
 type LoadBalancer struct {
-	servers []*Server
+	servers []*server.Server
 	idx     int
+	mu      sync.Mutex
 }
 
-func NewLoadBalancer(servers []*Server) *LoadBalancer {
+func NewLoadBalancer(servers []*server.Server) *LoadBalancer {
 	return &LoadBalancer{servers: servers, idx: 0}
 }
 
@@ -36,25 +28,28 @@ func (lb *LoadBalancer) healthCheckServers(interval time.Duration) {
 
 	for _ = range time.Tick(interval) {
 		for _, s := range lb.servers {
-			res, err := client.Get(fmt.Sprintf("http://localhost:%v/health-check", s.port))
+			res, err := client.Get(fmt.Sprintf("http://localhost:%v/health-check", s.Port))
 			if err != nil {
-				log.Printf("Health check failed for port %d: %v", s.port, err)
-				s.active = false
+				log.Printf("Health check failed for port %d: %v", s.Port, err)
+				s.SetActive(false)
 				continue
 			}
 
 			res.Body.Close()
 
 			if res.StatusCode != http.StatusOK {
-				s.active = false
+				s.SetActive(false)
 			} else {
-				s.active = true
+				s.SetActive(true)
 			}
 		}
 	}
 }
 
-func (lb *LoadBalancer) getNextServer() (*Server, error) {
+func (lb *LoadBalancer) getNextServer() (*server.Server, error) {
+	lb.mu.Lock()
+	defer lb.mu.Unlock()
+
 	servers := lb.servers
 	serversLen := len(servers)
 
@@ -63,7 +58,7 @@ func (lb *LoadBalancer) getNextServer() (*Server, error) {
 
 		s := servers[idx]
 
-		if s.active {
+		if s.IsActive() {
 			lb.idx = (idx + 1) % serversLen
 			return s, nil
 		}
@@ -88,7 +83,7 @@ func (lb *LoadBalancer) Start() error {
 			log.Fatal(err)
 		}
 
-		newBaseURL, err := url.Parse(fmt.Sprintf("http://localhost:%v", server.port))
+		newBaseURL, err := url.Parse(fmt.Sprintf("http://localhost:%v", server.Port))
 		if err != nil {
 			log.Fatal(err)
 		}
