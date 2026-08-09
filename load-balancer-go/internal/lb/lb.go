@@ -3,7 +3,7 @@ package lb
 import (
 	"fmt"
 	"io"
-	"log"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"sync"
@@ -14,17 +14,29 @@ import (
 )
 
 type LoadBalancer struct {
-	port    int
+	port int
+
+	mu      sync.Mutex
 	servers []*server.Server
 	idx     int
-	mu      sync.Mutex
+
+	healthInterval time.Duration
+
+	logger *slog.Logger
 }
 
-func NewLoadBalancer(servers []*server.Server, port int) *LoadBalancer {
+func NewLoadBalancer(
+	servers []*server.Server,
+	port int,
+	healthInterval time.Duration,
+	logger *slog.Logger,
+) *LoadBalancer {
 	return &LoadBalancer{
-		servers: servers,
-		idx:     0,
-		port:    port,
+		servers:        servers,
+		idx:            0,
+		port:           port,
+		healthInterval: healthInterval,
+		logger:         logger,
 	}
 }
 
@@ -35,7 +47,11 @@ func (lb *LoadBalancer) healthCheckServers(interval time.Duration) {
 		for _, s := range lb.servers {
 			res, err := client.Get(fmt.Sprintf("http://localhost:%v/health-check", s.Port))
 			if err != nil {
-				log.Printf("Health check failed for port %d: %v", s.Port, err)
+				lb.logger.Error(
+					"Health check failed",
+					slog.Int("port", s.Port),
+					utils.ErrAttr(err),
+				)
 				s.SetActive(false)
 				continue
 			}
@@ -72,21 +88,29 @@ func (lb *LoadBalancer) getNextServer() (*server.Server, error) {
 	return nil, fmt.Errorf("All servers are inactive")
 }
 func (lb *LoadBalancer) handleReq(w http.ResponseWriter, r *http.Request) {
-	utils.LogReqDetails(r)
-
-	httpClient := &http.Client{
-		Timeout: time.Second * 5,
-	}
+	utils.LogReqDetails(r, lb.logger)
 
 	server, err := lb.getNextServer()
 	if err != nil {
-		// TODO: should we return a 500 response or crash?
-		log.Fatal(err)
+		lb.logger.Error(
+			"Failed to get next server.",
+			utils.ErrAttr(err),
+		)
+
+		// TODO: return a 500 response
+		return
 	}
 
 	newBaseURL, err := url.Parse(fmt.Sprintf("http://localhost:%v", server.Port))
 	if err != nil {
-		log.Fatal(err)
+		lb.logger.Error(
+			"Failed to parse newBaseURL",
+			slog.Int("port", server.Port),
+			utils.ErrAttr(err),
+		)
+
+		// TODO: return a 500 response
+		return
 	}
 
 	// TODO: Need to study r.Host vs r.URL.Host
@@ -108,9 +132,19 @@ func (lb *LoadBalancer) handleReq(w http.ResponseWriter, r *http.Request) {
 
 	clonedReq.RequestURI = ""
 
+	httpClient := &http.Client{
+		Timeout: time.Second * 5,
+	}
+
 	serverRes, err := httpClient.Do(clonedReq)
 	if err != nil {
-		log.Fatal(err)
+		lb.logger.Error(
+			"Failed to forward the request",
+			utils.ErrAttr(err),
+		)
+
+		// TODO: return a 500 response
+		return
 	}
 
 	for headerName, headerVals := range serverRes.Header {
@@ -123,12 +157,15 @@ func (lb *LoadBalancer) handleReq(w http.ResponseWriter, r *http.Request) {
 
 	defer serverRes.Body.Close()
 	if _, err := io.Copy(w, serverRes.Body); err != nil {
-		log.Fatal(err)
+		lb.logger.Error(
+			"Failed to response body",
+			utils.ErrAttr(err),
+		)
 	}
 }
 
 func (lb *LoadBalancer) Start() error {
-	go lb.healthCheckServers(2 * time.Second)
+	go lb.healthCheckServers(lb.healthInterval)
 
 	mux := http.NewServeMux()
 
@@ -136,7 +173,7 @@ func (lb *LoadBalancer) Start() error {
 
 	port := fmt.Sprintf(":%v", lb.port)
 
-	log.Printf("Starting load balancer on port %s", port)
+	lb.logger.Info("Starting load balancer", slog.String("port", port))
 
 	if err := http.ListenAndServe(port, mux); err != nil {
 		return err

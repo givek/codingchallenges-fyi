@@ -1,9 +1,12 @@
 package lb
 
 import (
+	"log/slog"
+	"os"
 	"sync"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/givek/codingchallenges-fyi/load-balancer-go/internal/server"
 )
@@ -16,7 +19,9 @@ func TestLoadBalancerConcurrentRoundRobin(t *testing.T) {
 		server.NewServer(8083, true),
 	}
 
-	lb := NewLoadBalancer(servers, 80)
+	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
+
+	lb := NewLoadBalancer(servers, 80, 15*time.Second, logger)
 
 	var wg sync.WaitGroup
 	workers := 10_000 * len(servers)
