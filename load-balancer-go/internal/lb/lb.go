@@ -45,7 +45,12 @@ func (lb *LoadBalancer) healthCheckServers(interval time.Duration) {
 
 	for _ = range time.Tick(interval) {
 		for _, s := range lb.servers {
-			res, err := client.Get(fmt.Sprintf("http://localhost:%v/health-check", s.Port))
+			res, err := client.Get(
+				fmt.Sprintf(
+					"http://localhost:%v/health-check",
+					s.Port,
+				),
+			)
 			if err != nil {
 				lb.logger.Error(
 					"Health check failed",
@@ -97,7 +102,10 @@ func (lb *LoadBalancer) handleReq(w http.ResponseWriter, r *http.Request) {
 			utils.ErrAttr(err),
 		)
 
-		// TODO: return a 500 response
+		w.WriteHeader(http.StatusServiceUnavailable)
+
+		w.Write([]byte("Service Unavailable"))
+
 		return
 	}
 
@@ -109,7 +117,10 @@ func (lb *LoadBalancer) handleReq(w http.ResponseWriter, r *http.Request) {
 			utils.ErrAttr(err),
 		)
 
-		// TODO: return a 500 response
+		w.WriteHeader(http.StatusInternalServerError)
+
+		w.Write([]byte("Internal Server Error"))
+
 		return
 	}
 
@@ -143,7 +154,10 @@ func (lb *LoadBalancer) handleReq(w http.ResponseWriter, r *http.Request) {
 			utils.ErrAttr(err),
 		)
 
-		// TODO: return a 500 response
+		w.WriteHeader(http.StatusBadGateway)
+
+		w.Write([]byte("Bad Gateway"))
+
 		return
 	}
 

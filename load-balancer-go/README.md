@@ -5,7 +5,6 @@ Small learning project for building an HTTP load balancer in Go.
 ## Current Check
 
 - `go test ./...` passes.
-- `go test -race ./internal/lb ./internal/server` passes.
 - `go test -race ./...` passes.
 - `go build ./cmd/lb` and `go build ./cmd/ts` complete in the current environment.
 
@@ -13,19 +12,19 @@ Small learning project for building an HTTP load balancer in Go.
 
 ### High Priority
 
-- [ ] Return HTTP error responses from load balancer error paths.
+- [x] Return HTTP error responses from load balancer error paths.
   - In `internal/lb/lb.go`, `handleReq` no longer exits the whole process on request errors, which is good.
-  - The next step is to avoid returning without writing a response, because that can produce an implicit empty `200 OK`.
-  - Good status codes to consider: `503 Service Unavailable` when no backend is available, `500 Internal Server Error` for unexpected internal setup errors, and `502 Bad Gateway` when the selected backend fails.
+  - Error paths now write explicit responses instead of returning an implicit empty `200 OK`.
+  - Current status codes: `503 Service Unavailable` when no backend is available, `500 Internal Server Error` for unexpected internal setup errors, and `502 Bad Gateway` when the selected backend fails.
 
 - [ ] Make the injected logger nil-safe.
   - `NewLoadBalancer` accepts `logger *slog.Logger`, so a caller can accidentally pass `nil`.
   - Either default to `slog.Default()` when `logger == nil`, or treat nil as invalid and return an error from the constructor.
 
 - [ ] Add tests for failure behavior.
-  - Test what happens when all servers are inactive.
+  - Done: test what happens when all servers are inactive.
   - Test what happens when a selected backend is unreachable.
-  - Test that request error paths return useful HTTP status codes instead of an empty `200 OK`.
+  - Test all request error paths return useful HTTP status codes instead of an empty `200 OK`.
 
 ### Medium Priority
 
@@ -57,8 +56,8 @@ Small learning project for building an HTTP load balancer in Go.
   - `time.Tick` cannot be stopped.
   - A `time.NewTicker` is easier to clean up later if you add graceful shutdown with `context.Context`.
 
-- [ ] Add `test` and `race` targets to the `Makefile`.
-  - Example goals: `make test`, `make race`, and `make build`.
+- [x] Add a `test` target to the `Makefile`.
+  - `make test` now runs the full test suite with the race detector.
 
 - [ ] Avoid committing generated binaries.
   - `bin/lb` and `bin/ts` look like build outputs.
