@@ -45,11 +45,19 @@ func parseBulkString(input []byte) (*BulkString, int64, error) {
 
 	se := int64(strEndIdx) + 2
 
-	val := string(input)[se : se+size]
-
+	xs := se + size
 	// A bluk string must end with CRLF (\r\n)
+	if xs+1 >= int64(len(input)) {
+		return nil, 0, fmt.Errorf("invalid bulk string")
+	}
 
-	return NewBulkString(val), se + size + 2, nil
+	if input[xs] != '\r' && input[xs+1] != '\n' {
+		return nil, 0, fmt.Errorf("invalid bulk string")
+	}
+
+	val := string(input)[se:xs]
+
+	return NewBulkString(val), xs + 2, nil
 }
 
 func parseArray(input []byte) (*Array, int64, error) {
@@ -138,8 +146,10 @@ func Parse(resp []byte) (DataType, int64, error) {
 
 	fmt.Printf("DataType: %q - %q\n", string(dataTypeId), string(resp))
 
-	if ok, s := isNull(resp[:5]); ok {
-		return NewNull(rune(dataTypeId)), s, nil
+	if len(resp) >= 5 {
+		if ok, s := isNull(resp[:5]); ok {
+			return NewNull(rune(dataTypeId)), s, nil
+		}
 	}
 
 	remaining := resp[1:]

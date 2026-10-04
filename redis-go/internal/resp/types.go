@@ -18,16 +18,6 @@ type DataType interface {
 	Identifier() rune
 }
 
-type Error struct {
-	message string
-}
-
-func NewError(message string) *Error {
-	return &Error{
-		message: message,
-	}
-}
-
 type Int struct {
 	value int64
 }
@@ -36,8 +26,22 @@ func NewInt(value int64) *Int {
 	return &Int{value: value}
 }
 
+func (ss *Int) Value() int64 {
+	return ss.value
+}
+
 func (n *Int) Identifier() rune {
 	return IntPrefix
+}
+
+type Error struct {
+	message string
+}
+
+func NewError(message string) *Error {
+	return &Error{
+		message: message,
+	}
 }
 
 func (ss *Error) Identifier() rune {
